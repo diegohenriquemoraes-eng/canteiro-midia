@@ -1,0 +1,39 @@
+name: Avisos
+
+# Avisos de horário do Canteiro (Web Push). Roda aqui, no repo PÚBLICO de mídia, porque repo
+# público não gasta minutos do GitHub; lê e grava o estado no repo privado com GH_PAT.
+# ATENÇÃO: os logs daqui são públicos. O motor só imprime contagens. Não acrescentar echo de dado.
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: avisos
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  avisos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: diegohenriquemoraes-eng/canteiro
+          token: ${{ secrets.GH_PAT }}
+          path: privado
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q pywebpush cryptography
+      - name: Mandar avisos devidos
+        working-directory: privado
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: python -m motor.avisos
+      - name: Gravar o que foi enviado
+        working-directory: privado
+        run: bash .github/gravar.sh "avisos enviados"
